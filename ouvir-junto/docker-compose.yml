@@ -1,0 +1,6 @@
+services:
+  ouvir-junto:
+    build: .
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

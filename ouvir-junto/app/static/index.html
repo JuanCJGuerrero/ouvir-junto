@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ouvir Junto</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <main id="home-screen" class="screen">
+    <div class="card ticket">
+      <div class="brand">
+        <svg class="reel-icon" viewBox="0 0 48 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" />
+          <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+          <circle cx="36" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" />
+          <circle cx="36" cy="12" r="2.5" fill="currentColor" />
+          <line x1="21" y1="12" x2="27" y2="12" stroke="currentColor" stroke-width="2.5" />
+        </svg>
+        <h1>Ouvir Junto</h1>
+      </div>
+      <p class="subtitle">Crie uma sala, cole um vídeo do YouTube. Quem entrar ouve no mesmo segundo que você.</p>
+
+      <button id="createRoomBtn" class="btn primary">Criar sala</button>
+
+      <div class="divider"><span>ou entre com um código</span></div>
+
+      <div class="join-row">
+        <input id="joinCodeInput" class="code-input" placeholder="ABC123" maxlength="6" autocomplete="off" />
+        <button id="joinRoomBtn" class="btn">Entrar</button>
+      </div>
+      <p id="homeError" class="error-text"></p>
+    </div>
+  </main>
+
+  <main id="room-screen" class="screen hidden">
+    <header class="room-header">
+      <div class="brand small">
+        <svg class="reel-icon" viewBox="0 0 48 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" />
+          <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+          <circle cx="36" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" />
+          <circle cx="36" cy="12" r="2.5" fill="currentColor" />
+          <line x1="21" y1="12" x2="27" y2="12" stroke="currentColor" stroke-width="2.5" />
+        </svg>
+        <span>Ouvir Junto</span>
+      </div>
+      <div class="room-chip">
+        <span class="room-code" id="roomCodeDisplay"></span>
+        <button id="copyLinkBtn" class="chip-btn">Copiar link</button>
+      </div>
+      <div class="user-count" id="userCount">1 na sala</div>
+    </header>
+
+    <div id="player-wrapper">
+      <div id="player"></div>
+      <div id="player-placeholder" class="player-placeholder">
+        <p>Cole o link de um vídeo do YouTube abaixo para começar</p>
+      </div>
+    </div>
+
+    <form id="videoForm" class="controls">
+      <input id="videoInput" placeholder="Cole um link do YouTube" autocomplete="off" />
+      <button type="submit" class="btn primary">Tocar para todos</button>
+    </form>
+    <p id="roomError" class="error-text"></p>
+  </main>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="app.js"></script>
+</body>
+</html>
