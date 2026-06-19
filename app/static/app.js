@@ -6,6 +6,12 @@ let heartbeatTimer = null;
 let playerReady = false;
 let ytApiReady = false;
 let pendingState = null; // estado recebido antes do player do YouTube estar pronto
+let currentPlaylistIndex = -1;
+
+const playlist = [];
+const videoTitles = {};
+const queueList = document.getElementById("queueList");
+const chatLog = document.getElementById("chatLog");
 
 const homeScreen = document.getElementById("home-screen");
 const roomScreen = document.getElementById("room-screen");
@@ -192,3 +198,248 @@ function startHeartbeat() {
 function stopHeartbeat() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
 }
+
+
+// ===============================
+// CHAT + PLAYLIST
+// ===============================
+
+function getUsername() {
+  return (
+    document.getElementById("nameInput")?.value?.trim() ||
+    localStorage.getItem("ouvirJuntoName") ||
+    "Usuário"
+  );
+}
+
+// -------------------------------
+// PLAYLIST
+// -------------------------------
+
+function renderPlaylist() {
+  if (!queueList) return;
+
+  queueList.innerHTML = "";
+
+ playlist.forEach((videoId, index) => {
+  const li = document.createElement("li");
+
+  li.className =
+    "queue-item" +
+    (index === currentPlaylistIndex ? " playing" : "");
+
+  li.innerHTML = `
+    <img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg">
+
+    <div class="queue-item-info">
+      <div class="queue-item-title">
+        ${videoTitles[videoId] || `Vídeo ${index + 1}`}
+      </div>
+
+      <div class="queue-item-meta">
+        ${index === currentPlaylistIndex ? "▶ Tocando agora" : `#${index + 1}`}
+      </div>
+    </div>
+
+    <button class="queue-item-remove">✕</button>
+  `;
+
+  // clicar no vídeo toca ele
+  li.addEventListener("click", (e) => {
+    if (e.target.classList.contains("queue-item-remove")) return;
+
+    playPlaylistVideo(index);
+  });
+
+  li.querySelector(".queue-item-remove").addEventListener("click", (e) => {
+    e.stopPropagation();
+
+    playlist.splice(index, 1);
+
+    if (currentPlaylistIndex >= playlist.length) {
+      currentPlaylistIndex = playlist.length - 1;
+    }
+
+    renderPlaylist();
+    if (playlist.length === 1) {
+  playPlaylistVideo(0);
+}
+  });
+
+  queueList.appendChild(li);
+});
+}
+async function addToPlaylist(videoId) {
+  if (!playlist.includes(videoId)) {
+    playlist.push(videoId);
+
+    // se for o primeiro vídeo da fila
+    if (currentPlaylistIndex === -1) {
+      currentPlaylistIndex = 0;
+    }
+
+    try {
+      const response = await fetch(
+        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+      );
+
+      const data = await response.json();
+      videoTitles[videoId] = data.title;
+    } catch {
+      videoTitles[videoId] = `Vídeo ${playlist.length}`;
+    }
+
+    renderPlaylist();
+  }
+}
+// Intercepta envio do formulário de vídeo
+document.getElementById("videoForm").addEventListener(
+  "submit",
+  (e) => {
+    const id = extractVideoId(
+      document.getElementById("videoInput").value
+    );
+
+    if (id) {
+      addToPlaylist(id);
+    }
+  },
+  true
+);
+
+// Botão Pular
+document.getElementById("skipBtn").addEventListener("click", () => {
+  if (playlist.length <= 1) return;
+
+  playlist.shift();
+
+  const nextVideo = playlist[0];
+
+
+  renderPlaylist();
+
+  if (nextVideo) {
+    send({
+  type: "changeVideo",
+  videoId: nextVideo,
+});
+  }
+});
+
+// trocar video da playlist
+function playPlaylistVideo(index) {
+  if (index < 0 || index >= playlist.length) return;
+
+  currentPlaylistIndex = index;
+
+  const videoId = playlist[index];
+
+  send({
+    type: "changeVideo",
+    videoId
+  });
+
+  renderPlaylist();
+}
+
+
+
+// -------------------------------
+// CHAT
+// -------------------------------
+
+function addChatMessage(name, text, own = false) {
+  if (!chatLog) return;
+
+  const li = document.createElement("li");
+  li.className = own ? "chat-message own" : "chat-message";
+
+  li.innerHTML = `
+    <div class="chat-name">${escapeHtml(name)}</div>
+    <div class="chat-text">${escapeHtml(text)}</div>
+  `;
+
+  chatLog.appendChild(li);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+document.getElementById("chatForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const input = document.getElementById("chatInput");
+
+  const text = input.value.trim();
+
+  if (!text) return;
+
+  addChatMessage(getUsername(), text, true);
+
+  send({
+  type: "chat",
+  name: getUsername(),
+  text,
+});
+
+  input.value = "";
+});
+
+// -------------------------------
+// Intercepta mensagens websocket
+// -------------------------------
+
+const originalHandleMessage = handleMessage;
+
+handleMessage = function (msg) {
+  if (msg.type === "chat") {
+    addChatMessage(msg.name || "Usuário", msg.text || "");
+    return;
+  }
+
+  originalHandleMessage(msg);
+};  
+//botão próximo e anterior
+
+const panelHead = document.querySelector(".queue-panel .panel-head");
+
+panelHead.insertAdjacentHTML(
+  "beforeend",
+  `
+    <button id="prevBtn" class="chip-btn">⏮ Anterior</button>
+    <button id="nextBtn" class="chip-btn">⏭ Próximo</button>
+  `
+);
+
+document.addEventListener("click", (e) => {
+
+  if (e.target.id === "nextBtn") {
+
+    if (playlist.length === 0) return;
+
+    currentPlaylistIndex++;
+
+    if (currentPlaylistIndex >= playlist.length) {
+      currentPlaylistIndex = 0;
+    }
+
+    playPlaylistVideo(currentPlaylistIndex);
+  }
+
+  if (e.target.id === "prevBtn") {
+
+    if (playlist.length === 0) return;
+
+    currentPlaylistIndex--;
+
+    if (currentPlaylistIndex < 0) {
+      currentPlaylistIndex = playlist.length - 1;
+    }
+
+    playPlaylistVideo(currentPlaylistIndex);
+  }
+});

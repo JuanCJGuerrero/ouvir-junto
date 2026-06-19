@@ -23,7 +23,9 @@
         </svg>
         <h1>Ouvir Junto</h1>
       </div>
-      <p class="subtitle">Crie uma sala, cole um vídeo do YouTube. Quem entrar ouve no mesmo segundo que você.</p>
+      <p class="subtitle">Crie uma sala, monte uma fila de vídeos do YouTube e converse enquanto ouve com seus amigos.</p>
+
+      <input id="nameInput" class="name-input" placeholder="Seu nome" maxlength="24" autocomplete="off" />
 
       <button id="createRoomBtn" class="btn primary">Criar sala</button>
 
@@ -56,18 +58,42 @@
       <div class="user-count" id="userCount">1 na sala</div>
     </header>
 
-    <div id="player-wrapper">
-      <div id="player"></div>
-      <div id="player-placeholder" class="player-placeholder">
-        <p>Cole o link de um vídeo do YouTube abaixo para começar</p>
-      </div>
-    </div>
+    <div class="room-layout">
+      <div class="main-col">
+        <div id="player-wrapper">
+          <div id="player"></div>
+          <div id="player-placeholder" class="player-placeholder">
+            <p>Adicione um vídeo do YouTube abaixo para começar</p>
+          </div>
+        </div>
+        <p class="now-playing" id="nowPlaying"></p>
 
-    <form id="videoForm" class="controls">
-      <input id="videoInput" placeholder="Cole um link do YouTube" autocomplete="off" />
-      <button type="submit" class="btn primary">Tocar para todos</button>
-    </form>
-    <p id="roomError" class="error-text"></p>
+        <form id="videoForm" class="controls">
+          <input id="videoInput" placeholder="Cole um link do YouTube" autocomplete="off" />
+          <button type="submit" class="btn primary">Adicionar à fila</button>
+        </form>
+        <p id="roomError" class="error-text"></p>
+
+        <section class="queue-panel">
+          <div class="panel-head">
+            <h2>Fila</h2>
+            <button id="skipBtn" class="chip-btn" type="button">Pular ▸</button>
+          </div>
+          <ul id="queueList" class="queue-list"></ul>
+        </section>
+      </div>
+
+      <aside class="chat-col">
+        <div class="panel-head">
+          <h2>Chat</h2>
+        </div>
+        <ul id="chatLog" class="chat-log"></ul>
+        <form id="chatForm" class="chat-form">
+          <input id="chatInput" placeholder="Mandar mensagem" autocomplete="off" maxlength="500" />
+          <button type="submit" class="btn primary">Enviar</button>
+        </form>
+      </aside>
+    </div>
   </main>
 
   <script src="https://www.youtube.com/iframe_api"></script>

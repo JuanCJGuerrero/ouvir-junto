@@ -93,6 +93,17 @@ input:focus-visible {
   margin: 12px 0 28px;
 }
 
+.name-input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 13px 14px;
+  color: var(--text);
+  font-size: 15px;
+  margin-bottom: 14px;
+}
+
 .btn {
   width: 100%;
   padding: 13px 18px;
@@ -171,7 +182,7 @@ input:focus-visible {
 #room-screen {
   flex-direction: column;
   align-items: stretch;
-  max-width: 760px;
+  max-width: 1080px;
   margin: 0 auto;
   gap: 16px;
 }
@@ -289,6 +300,212 @@ input:focus-visible {
   width: auto;
   padding: 13px 20px;
   white-space: nowrap;
+}
+
+.now-playing {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+  min-height: 18px;
+}
+
+.now-playing strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* layout: player+fila à esquerda, chat à direita */
+
+.room-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+.main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.panel-head h2 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.queue-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.queue-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.queue-list:empty::after {
+  content: "A fila está vazia. Adicione um vídeo aí acima.";
+  display: block;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 8px 2px;
+}
+
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.queue-item.playing {
+  border-color: var(--accent);
+}
+
+.queue-item img {
+  width: 56px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: #000;
+}
+
+.queue-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.queue-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-item-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.queue-item-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px;
+  flex-shrink: 0;
+}
+
+.queue-item-remove:hover {
+  color: #e07a6b;
+}
+
+/* chat */
+
+.chat-col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 420px;
+}
+
+.chat-log {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0 4px 0 0;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chat-message .chat-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.chat-message .chat-text {
+  font-size: 14px;
+  margin-top: 2px;
+  word-break: break-word;
+}
+
+.chat-message.own .chat-name {
+  color: var(--online);
+}
+
+.chat-system {
+  text-align: center;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-form input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 12px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.chat-form .btn {
+  width: auto;
+  padding: 11px 16px;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .room-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .chat-col {
+    min-height: 320px;
+  }
 }
 
 @media (max-width: 480px) {
