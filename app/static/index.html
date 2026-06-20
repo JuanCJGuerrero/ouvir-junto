@@ -6,7 +6,7 @@
   <title>Ouvir Junto</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600;1,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -41,29 +41,49 @@
 
   <main id="room-screen" class="screen hidden">
     <header class="room-header">
-      <div class="brand small">
-        <svg class="reel-icon" viewBox="0 0 48 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" />
-          <circle cx="12" cy="12" r="2.5" fill="currentColor" />
-          <circle cx="36" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" />
-          <circle cx="36" cy="12" r="2.5" fill="currentColor" />
-          <line x1="21" y1="12" x2="27" y2="12" stroke="currentColor" stroke-width="2.5" />
-        </svg>
-        <span>Ouvir Junto</span>
+      <div class="header-left">
+        <button id="backBtn" class="icon-btn" title="Voltar ao início" type="button">←</button>
+        <div class="brand small">
+          <svg class="reel-icon" viewBox="0 0 48 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" />
+            <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+            <circle cx="36" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" />
+            <circle cx="36" cy="12" r="2.5" fill="currentColor" />
+            <line x1="21" y1="12" x2="27" y2="12" stroke="currentColor" stroke-width="2.5" />
+          </svg>
+          <span>Ouvir Junto</span>
+        </div>
       </div>
+
       <div class="room-chip">
         <span class="room-code" id="roomCodeDisplay"></span>
         <button id="copyLinkBtn" class="chip-btn">Copiar link</button>
       </div>
-      <div class="user-count" id="userCount">1 na sala</div>
+
+      <div class="header-right">
+        <div class="user-name-edit">
+          <span id="userNameDisplay" class="user-name-display"></span>
+          <button id="editNameBtn" class="icon-btn small" title="Mudar nome" type="button">✎</button>
+        </div>
+        <div class="user-count" id="userCount">1 na sala</div>
+      </div>
     </header>
+
+    <form id="nameEditForm" class="name-edit-form hidden">
+      <input id="nameEditInput" maxlength="24" autocomplete="off" placeholder="Seu nome" />
+      <button type="submit" class="btn primary small">Salvar</button>
+      <button type="button" id="cancelNameEdit" class="btn small">Cancelar</button>
+    </form>
 
     <div class="room-layout">
       <div class="main-col">
         <div id="player-wrapper">
-          <div id="player"></div>
+          <div id="player-slot"><div id="player"></div></div>
           <div id="player-placeholder" class="player-placeholder">
             <p>Adicione um vídeo do YouTube abaixo para começar</p>
+          </div>
+          <div id="sync-overlay" class="sync-overlay hidden">
+            <button id="syncPlayBtn" class="btn primary" type="button">▶ Tocar e sincronizar</button>
           </div>
         </div>
         <p class="now-playing" id="nowPlaying"></p>
@@ -77,7 +97,10 @@
         <section class="queue-panel">
           <div class="panel-head">
             <h2>Fila</h2>
-            <button id="skipBtn" class="chip-btn" type="button">Pular ▸</button>
+            <div class="queue-controls">
+              <button id="prevBtn" class="chip-btn" type="button">⏮ Anterior</button>
+              <button id="nextBtn" class="chip-btn" type="button">Pular ⏭</button>
+            </div>
           </div>
           <ul id="queueList" class="queue-list"></ul>
         </section>

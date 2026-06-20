@@ -1,3 +1,5 @@
+// ---------- Estado global ----------
+
 let player = null;
 let ws = null;
 let roomCode = null;
@@ -7,17 +9,42 @@ let playerReady = false;
 let ytApiReady = false;
 let pendingState = null; // estado recebido antes do player do YouTube estar pronto
 let currentPlaylistIndex = -1;
+let syncCheckTimer = null;
+
+let intentionalClose = false;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
 
 const playlist = [];
 const videoTitles = {};
+
+// identifica esta aba/sessão para reconhecer o eco do próprio chat sem duplicar
+const clientId =
+  window.crypto && window.crypto.randomUUID
+    ? window.crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36);
+
+let currentUsername = localStorage.getItem("ouvirJuntoName") || "Usuário";
+
+// ---------- Elementos ----------
+
 const queueList = document.getElementById("queueList");
 const chatLog = document.getElementById("chatLog");
+const userCountEl = document.getElementById("userCount");
+const nowPlaying = document.getElementById("nowPlaying");
 
 const homeScreen = document.getElementById("home-screen");
 const roomScreen = document.getElementById("room-screen");
 const homeError = document.getElementById("homeError");
 const roomError = document.getElementById("roomError");
 const placeholder = document.getElementById("player-placeholder");
+const syncOverlay = document.getElementById("sync-overlay");
+
+const userNameDisplay = document.getElementById("userNameDisplay");
+const nameEditForm = document.getElementById("nameEditForm");
+const nameEditInput = document.getElementById("nameEditInput");
+
+// ---------- Util ----------
 
 function generateRoomCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -34,31 +61,118 @@ function extractVideoId(input) {
   return null;
 }
 
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function setUsername(name) {
+  currentUsername = name && name.trim() ? name.trim().slice(0, 24) : "Usuário";
+  localStorage.setItem("ouvirJuntoName", currentUsername);
+  if (userNameDisplay) userNameDisplay.textContent = currentUsername;
+}
+
+function resetPlayerSlot() {
+  // a API do YouTube substitui a div original pelo iframe e a remove ao
+  // destruir o player, então é preciso recriar a div antes de criar outro
+  const slot = document.getElementById("player-slot");
+  if (slot) slot.innerHTML = '<div id="player"></div>';
+}
+
+// ---------- Navegação entre telas ----------
+
 function enterRoom(code) {
   if (!/^[A-Za-z0-9]{4,8}$/.test(code)) {
     homeError.textContent = "Use um código de 4 a 8 letras/números.";
     return;
   }
+
+  homeError.textContent = "";
   roomCode = code.toUpperCase();
+
   homeScreen.classList.add("hidden");
   roomScreen.classList.remove("hidden");
   document.getElementById("roomCodeDisplay").textContent = roomCode;
   history.replaceState(null, "", `?code=${roomCode}`);
+
+  setUsername(currentUsername);
+
+  resetPlayerSlot();
+  player = null;
+  playerReady = false;
+  pendingState = null;
+
   ensurePlayerCreated();
   connectSocket();
 }
 
+function leaveRoom() {
+  intentionalClose = true;
+  clearTimeout(reconnectTimer);
+  stopHeartbeat();
+
+  if (ws) {
+    try {
+      ws.close();
+    } catch (e) {
+      /* ignore */
+    }
+    ws = null;
+  }
+
+  if (player && player.destroy) {
+    try {
+      player.destroy();
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  player = null;
+  playerReady = false;
+  pendingState = null;
+  resetPlayerSlot();
+
+  playlist.length = 0;
+  Object.keys(videoTitles).forEach((key) => delete videoTitles[key]);
+  currentPlaylistIndex = -1;
+
+  if (queueList) queueList.innerHTML = "";
+  if (chatLog) chatLog.innerHTML = "";
+  if (nowPlaying) nowPlaying.textContent = "";
+
+  placeholder.classList.remove("hidden");
+  syncOverlay.classList.add("hidden");
+  roomError.textContent = "";
+
+  roomCode = null;
+  history.replaceState(null, "", window.location.pathname);
+
+  roomScreen.classList.add("hidden");
+  homeScreen.classList.remove("hidden");
+}
+
 document.getElementById("createRoomBtn").addEventListener("click", () => {
+  applyNameFromHome();
   enterRoom(generateRoomCode());
 });
 
 document.getElementById("joinRoomBtn").addEventListener("click", () => {
+  applyNameFromHome();
   enterRoom(document.getElementById("joinCodeInput").value.trim());
 });
 
 document.getElementById("joinCodeInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter") document.getElementById("joinRoomBtn").click();
 });
+
+document.getElementById("backBtn").addEventListener("click", leaveRoom);
+
+function applyNameFromHome() {
+  const input = document.getElementById("nameInput");
+  const val = input ? input.value.trim() : "";
+  if (val) setUsername(val);
+}
 
 document.getElementById("copyLinkBtn").addEventListener("click", async () => {
   await navigator.clipboard.writeText(window.location.href);
@@ -68,38 +182,49 @@ document.getElementById("copyLinkBtn").addEventListener("click", async () => {
   setTimeout(() => (btn.textContent = original), 1500);
 });
 
-document.getElementById("videoForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-
-  const input = document.getElementById("videoInput");
-  const videoId = extractVideoId(input.value);
-
-  if (!videoId) {
-    roomError.textContent =
-      "Não reconheci esse link. Cole a URL completa do YouTube.";
-    return;
-  }
-
-  roomError.textContent = "";
-
-  send({
-    type: "playlistAdd",
-    videoId
-  });
-
-  input.value = "";
-});
-
 window.addEventListener("DOMContentLoaded", () => {
+  const nameInput = document.getElementById("nameInput");
+  if (nameInput && currentUsername !== "Usuário") nameInput.value = currentUsername;
+
   const code = new URLSearchParams(window.location.search).get("code");
   if (code) enterRoom(code);
 });
 
+// ---------- Edição de nome dentro da sala ----------
+
+document.getElementById("editNameBtn").addEventListener("click", () => {
+  nameEditInput.value = currentUsername;
+  nameEditForm.classList.remove("hidden");
+  nameEditInput.focus();
+});
+
+document.getElementById("cancelNameEdit").addEventListener("click", () => {
+  nameEditForm.classList.add("hidden");
+});
+
+nameEditForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const newName = nameEditInput.value.trim();
+  if (!newName) return;
+
+  setUsername(newName);
+  send({ type: "setName", name: currentUsername });
+  nameEditForm.classList.add("hidden");
+});
+
+// ---------- WebSocket ----------
+
 function connectSocket() {
-  ws = new WebSocket(`wss://ouvir-junto.onrender.com/ws/${roomCode}`);
+  intentionalClose = false;
+
+  const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
+  const url = `${wsProtocol}//${location.host}/ws/${roomCode}?name=${encodeURIComponent(currentUsername)}`;
+
+  ws = new WebSocket(url);
 
   ws.addEventListener("open", () => {
-    console.log("WebSocket conectado");
+    reconnectAttempts = 0;
+    roomError.textContent = "";
   });
 
   ws.addEventListener("message", (event) => {
@@ -107,41 +232,77 @@ function connectSocket() {
   });
 
   ws.addEventListener("close", () => {
-    roomError.textContent =
-      "Conexão perdida. Recarregue a página para voltar à sala.";
+    if (intentionalClose) return;
+
+    stopHeartbeat();
+
+    if (reconnectAttempts < 5) {
+      reconnectAttempts += 1;
+      roomError.textContent = "Conexão perdida. Tentando reconectar...";
+      reconnectTimer = setTimeout(connectSocket, 1200 * reconnectAttempts);
+    } else {
+      roomError.textContent = "Não foi possível reconectar. Recarregue a página.";
+    }
   });
 
-  ws.addEventListener("error", (err) => {
-    console.error("Erro WebSocket:", err);
-  });
+  ws.addEventListener("error", () => {});
 }
 
 function send(msg) {
   if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
 }
 
+// ---------- Mensagens recebidas ----------
+
 function handleMessage(msg) {
-  if (msg.type === "userCount") {
-    document.getElementById("userCount").textContent =
-      msg.count === 1 ? "1 na sala" : `${msg.count} na sala`;
-    return;
-  }
-  if (msg.type !== "sync") return;
+  switch (msg.type) {
+    case "sync":
+      if (!playerReady) {
+        pendingState = msg;
+      } else {
+        applySync(msg);
+      }
+      break;
 
-  if (!msg.videoId) return; // sala ainda sem vídeo
+    case "playlistSync":
+      handlePlaylistSync(msg);
+      break;
 
-  if (!playerReady) {
-    pendingState = msg;
-    return;
+    case "userCount":
+      userCountEl.textContent = msg.count === 1 ? "1 na sala" : `${msg.count} na sala`;
+      break;
+
+    case "chat":
+      addChatMessage(msg.name || "Usuário", msg.text || "", msg.clientId === clientId);
+      break;
+
+    case "system":
+      addSystemMessage(msg.text || "");
+      break;
   }
-  applySync(msg);
 }
 
 function applySync(msg) {
   applyingRemoteUpdate = true;
+
+  if (!msg.videoId) {
+    // sala sem vídeo: volta para o estado de "vazio" em vez de travar no último frame
+    if (player && player.stopVideo) {
+      try {
+        player.stopVideo();
+      } catch (e) {
+        /* ignore */
+      }
+    }
+    placeholder.classList.remove("hidden");
+    syncOverlay.classList.add("hidden");
+    applyingRemoteUpdate = false;
+    return;
+  }
+
   placeholder.classList.add("hidden");
 
-  const loadedId = player.getVideoData ? player.getVideoData().video_id : null;
+  const loadedId = player && player.getVideoData ? player.getVideoData().video_id : null;
 
   if (loadedId !== msg.videoId) {
     player.loadVideoById(msg.videoId, msg.position);
@@ -151,14 +312,39 @@ function applySync(msg) {
     if (drift > 1.5) player.seekTo(msg.position, true);
 
     const state = player.getPlayerState();
-    if (msg.isPlaying && state !== YT.PlayerState.PLAYING) player.playVideo();
-    if (!msg.isPlaying && state === YT.PlayerState.PLAYING) player.pauseVideo();
+    if (msg.isPlaying && state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING) {
+      player.playVideo();
+    }
+    if (!msg.isPlaying && state === YT.PlayerState.PLAYING) {
+      player.pauseVideo();
+    }
+  }
+
+  // se o navegador bloquear o autoplay, avisa e deixa o usuário liberar com um clique
+  clearTimeout(syncCheckTimer);
+  if (msg.isPlaying) {
+    syncCheckTimer = setTimeout(() => {
+      if (!player) return;
+      const state = player.getPlayerState();
+      if (state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING) {
+        syncOverlay.classList.remove("hidden");
+      }
+    }, 1200);
+  } else {
+    syncOverlay.classList.add("hidden");
   }
 
   setTimeout(() => (applyingRemoteUpdate = false), 400);
 }
 
-// Chamado automaticamente pela API do YouTube quando ela carrega
+document.getElementById("syncPlayBtn").addEventListener("click", () => {
+  syncOverlay.classList.add("hidden");
+  if (player && player.playVideo) player.playVideo();
+});
+
+// ---------- YouTube player ----------
+
+// chamado automaticamente pela API do YouTube quando ela carrega
 function onYouTubeIframeAPIReady() {
   ytApiReady = true;
   ensurePlayerCreated();
@@ -166,6 +352,7 @@ function onYouTubeIframeAPIReady() {
 
 function ensurePlayerCreated() {
   if (player || !ytApiReady || !document.getElementById("player")) return;
+
   player = new YT.Player("player", {
     height: "360",
     width: "640",
@@ -184,6 +371,10 @@ function ensurePlayerCreated() {
 }
 
 function onPlayerStateChange(event) {
+  if (event.data === YT.PlayerState.PLAYING) {
+    syncOverlay.classList.add("hidden");
+  }
+
   if (applyingRemoteUpdate) return;
 
   if (event.data === YT.PlayerState.PLAYING) {
@@ -195,115 +386,142 @@ function onPlayerStateChange(event) {
   }
 }
 
+// ---------- Heartbeat / detecção de avanço manual (seek) ----------
+
+let lastHeartbeatTime = null;
+let lastHeartbeatPos = null;
+
 function startHeartbeat() {
   stopHeartbeat();
+  lastHeartbeatTime = Date.now();
+  lastHeartbeatPos = player.getCurrentTime();
+
   heartbeatTimer = setInterval(() => {
-    if (player && !applyingRemoteUpdate) {
-      send({ type: "heartbeat", position: player.getCurrentTime() });
-    }
-  }, 4000);
+    if (!player || applyingRemoteUpdate) return;
+
+    const now = Date.now();
+    const pos = player.getCurrentTime();
+    const expectedPos = lastHeartbeatPos + (now - lastHeartbeatTime) / 1000;
+    const jumped = Math.abs(pos - expectedPos) > 1.5;
+
+    lastHeartbeatTime = now;
+    lastHeartbeatPos = pos;
+
+    // se detectar um salto (usuário arrastou a barra), avisa os outros mais rápido
+    send({ type: jumped ? "seek" : "heartbeat", position: pos });
+  }, 2000);
 }
 
 function stopHeartbeat() {
   if (heartbeatTimer) clearInterval(heartbeatTimer);
+  heartbeatTimer = null;
 }
 
+// ---------- Playlist ----------
 
-// ===============================
-// CHAT + PLAYLIST
-// ===============================
+async function handlePlaylistSync(msg) {
+  playlist.length = 0;
 
-function getUsername() {
-  return (
-    document.getElementById("nameInput")?.value?.trim() ||
-    localStorage.getItem("ouvirJuntoName") ||
-    "Usuário"
-  );
+  for (const videoId of msg.playlist) {
+    playlist.push(videoId);
+    if (!videoTitles[videoId]) {
+      fetchTitle(videoId); // não bloqueia a renderização da fila
+    }
+  }
+
+  currentPlaylistIndex = msg.currentIndex;
+  renderPlaylist();
 }
 
-// -------------------------------
-// PLAYLIST
-// -------------------------------
+async function fetchTitle(videoId) {
+  try {
+    const response = await fetch(
+      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+    );
+    const data = await response.json();
+    videoTitles[videoId] = data.title;
+  } catch {
+    videoTitles[videoId] = videoId;
+  }
+  renderPlaylist();
+}
 
 function renderPlaylist() {
   if (!queueList) return;
 
   queueList.innerHTML = "";
 
- playlist.forEach((videoId, index) => {
-  const li = document.createElement("li");
+  playlist.forEach((videoId, index) => {
+    const li = document.createElement("li");
+    li.className = "queue-item" + (index === currentPlaylistIndex ? " playing" : "");
 
-  li.className =
-    "queue-item" +
-    (index === currentPlaylistIndex ? " playing" : "");
-
-  li.innerHTML = `
-    <img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg">
-
-    <div class="queue-item-info">
-      <div class="queue-item-title">
-        ${videoTitles[videoId] || `Vídeo ${index + 1}`}
+    li.innerHTML = `
+      <img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg">
+      <div class="queue-item-info">
+        <div class="queue-item-title">${escapeHtml(videoTitles[videoId] || `Vídeo ${index + 1}`)}</div>
+        <div class="queue-item-meta">${index === currentPlaylistIndex ? "▶ Tocando agora" : `#${index + 1}`}</div>
       </div>
+      <button class="queue-item-remove" type="button" title="Remover">✕</button>
+    `;
 
-      <div class="queue-item-meta">
-        ${index === currentPlaylistIndex ? "▶ Tocando agora" : `#${index + 1}`}
-      </div>
-    </div>
+    li.addEventListener("click", (e) => {
+      if (e.target.classList.contains("queue-item-remove")) return;
+      playPlaylistVideo(index);
+    });
 
-    <button class="queue-item-remove">✕</button>
-  `;
+    li.querySelector(".queue-item-remove").addEventListener("click", (e) => {
+      e.stopPropagation();
+      send({ type: "playlistRemove", index });
+    });
 
-  // clicar no vídeo toca ele
-  li.addEventListener("click", (e) => {
-    if (e.target.classList.contains("queue-item-remove")) return;
-
-    playPlaylistVideo(index);
+    queueList.appendChild(li);
   });
 
-  li.querySelector(".queue-item-remove").addEventListener("click", (e) => {
-    e.stopPropagation();
-
-  send({
-  type: "playlistRemove",
-  index
-});
-    if (playlist.length === 1) {
-  playPlaylistVideo(0);
-}
-  });
-
-  queueList.appendChild(li);
-});
+  updateNowPlaying();
 }
 
-async function addToPlaylist(videoId) {
-  send({
-    type: "playlistAdd",
-    videoId
-  });
+function updateNowPlaying() {
+  if (!nowPlaying) return;
+
+  if (currentPlaylistIndex >= 0 && playlist[currentPlaylistIndex]) {
+    const vid = playlist[currentPlaylistIndex];
+    nowPlaying.innerHTML = `Tocando agora: <strong>${escapeHtml(videoTitles[vid] || vid)}</strong>`;
+  } else {
+    nowPlaying.textContent = "";
+  }
 }
 
-
-
-// Botão Pular
-document.getElementById("skipBtn").addEventListener("click", () => {
-  send({
-    type: "playlistNext"
-  });
-});
-
-// trocar video da playlist
 function playPlaylistVideo(index) {
-  send({
-    type: "playlistPlay",
-    index
-  });
+  send({ type: "playlistPlay", index });
 }
 
+document.getElementById("videoForm").addEventListener("submit", (e) => {
+  e.preventDefault();
 
-// -------------------------------
-// CHAT
-// -------------------------------
+  const input = document.getElementById("videoInput");
+  const videoId = extractVideoId(input.value);
+
+  if (!videoId) {
+    roomError.textContent = "Não reconheci esse link. Cole a URL completa do YouTube.";
+    return;
+  }
+
+  roomError.textContent = "";
+  send({ type: "playlistAdd", videoId });
+  input.value = "";
+});
+
+document.getElementById("nextBtn").addEventListener("click", () => {
+  if (playlist.length === 0) return;
+  send({ type: "playlistNext" });
+});
+
+document.getElementById("prevBtn").addEventListener("click", () => {
+  if (playlist.length === 0) return;
+  send({ type: "playlistPrev" });
+});
+
+// ---------- Chat ----------
 
 function addChatMessage(name, text, own = false) {
   if (!chatLog) return;
@@ -320,111 +538,26 @@ function addChatMessage(name, text, own = false) {
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
+function addSystemMessage(text) {
+  if (!chatLog) return;
+
+  const li = document.createElement("li");
+  li.className = "chat-system";
+  li.textContent = text;
+
+  chatLog.appendChild(li);
+  chatLog.scrollTop = chatLog.scrollHeight;
 }
 
 document.getElementById("chatForm").addEventListener("submit", (e) => {
   e.preventDefault();
 
   const input = document.getElementById("chatInput");
-
   const text = input.value.trim();
-
   if (!text) return;
 
-  addChatMessage(getUsername(), text, true);
-
-  send({
-  type: "chat",
-  name: getUsername(),
-  text,
-});
-
+  // o nome é definido pelo servidor (autoritativo); só mandamos o clientId
+  // para reconhecer o eco da própria mensagem sem duplicar no chat
+  send({ type: "chat", text, clientId });
   input.value = "";
-});
-
-// -------------------------------
-// Intercepta mensagens websocket
-// -------------------------------
-
-const originalHandleMessage = handleMessage;
-
-handleMessage = async function (msg) {
-
-  if (msg.type === "playlistSync") {
-
-    playlist.length = 0;
-
-    for (const videoId of msg.playlist) {
-
-      playlist.push(videoId);
-
-      if (!videoTitles[videoId]) {
-        try {
-          const response = await fetch(
-            `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
-          );
-
-          const data = await response.json();
-
-          videoTitles[videoId] = data.title;
-        } catch {
-          videoTitles[videoId] = videoId;
-        }
-      }
-    }
-
-    currentPlaylistIndex = msg.currentIndex;
-
-    renderPlaylist();
-    return;
-  }
-
-  if (msg.type === "chat") {
-    addChatMessage(msg.name || "Usuário", msg.text || "");
-    return;
-  }
-
-  originalHandleMessage(msg);
-};
-
-//botão próximo e anterior
-
-const panelHead = document.querySelector(".queue-panel .panel-head");
-
-panelHead.insertAdjacentHTML(
-  "beforeend",
-  `
-    <button id="prevBtn" class="chip-btn">⏮ Anterior</button>
-    <button id="nextBtn" class="chip-btn">⏭ Próximo</button>
-  `
-);
-
-document.addEventListener("click", (e) => {
-
-  if (e.target.id === "nextBtn") {
-
-    if (playlist.length === 0) return;
-
-    send({
-      type: "playlistNext"
-    });
-
-    return;
-  }
-
-  if (e.target.id === "prevBtn") {
-
-    if (playlist.length === 0) return;
-
-    send({
-      type: "playlistPrev"
-    });
-
-    return;
-  }
-
 });

@@ -8,9 +8,17 @@ from fastapi.staticfiles import StaticFiles
 app = FastAPI(title="Ouvir Junto")
 
 
+def clean_name(raw: Optional[str]) -> str:
+    if not raw:
+        return "Usuário"
+    name = raw.strip()[:24]
+    return name or "Usuário"
+
+
 class Room:
     def __init__(self):
         self.clients: Set[WebSocket] = set()
+        self.names: Dict[WebSocket, str] = {}
 
         self.video_id: Optional[str] = None
         self.is_playing = False
@@ -42,16 +50,20 @@ class Room:
             "currentIndex": self.current_index,
         }
 
+    def name_for(self, websocket: WebSocket) -> str:
+        return self.names.get(websocket, "Usuário")
+
 
 rooms: Dict[str, Room] = {}
 
 
-async def broadcast(room: Room, message: dict):
+async def broadcast(room: Room, message: dict, skip: Optional[WebSocket] = None):
     payload = json.dumps(message)
-
     disconnected = []
 
     for client in room.clients:
+        if client is skip:
+            continue
         try:
             await client.send_text(payload)
         except Exception:
@@ -59,6 +71,7 @@ async def broadcast(room: Room, message: dict):
 
     for client in disconnected:
         room.clients.discard(client)
+        room.names.pop(client, None)
 
 
 async def sync_room(room: Room):
@@ -66,27 +79,28 @@ async def sync_room(room: Room):
     await broadcast(room, room.playlist_message())
 
 
+def system_message(text: str) -> dict:
+    return {"type": "system", "text": text}
+
+
 @app.websocket("/ws/{room_code}")
 async def room_socket(websocket: WebSocket, room_code: str):
     room_code = room_code.upper()
+    name = clean_name(websocket.query_params.get("name"))
 
     await websocket.accept()
 
     room = rooms.setdefault(room_code, Room())
     room.clients.add(websocket)
+    room.names[websocket] = name
 
     try:
-        # envia estado atual
+        # envia estado atual só para quem entrou
         await websocket.send_text(json.dumps(room.state_message()))
         await websocket.send_text(json.dumps(room.playlist_message()))
 
-        await broadcast(
-            room,
-            {
-                "type": "userCount",
-                "count": len(room.clients),
-            },
-        )
+        await broadcast(room, {"type": "userCount", "count": len(room.clients)})
+        await broadcast(room, system_message(f"{name} entrou na sala"), skip=websocket)
 
         while True:
             raw = await websocket.receive_text()
@@ -103,14 +117,33 @@ async def room_socket(websocket: WebSocket, room_code: str):
             # ==================================================
 
             if msg_type == "chat":
+                text = (msg.get("text") or "").strip()[:500]
+                if not text:
+                    continue
+
                 await broadcast(
                     room,
                     {
                         "type": "chat",
-                        "name": msg.get("name", "Usuário"),
-                        "text": msg.get("text", ""),
+                        "name": room.name_for(websocket),
+                        "text": text,
+                        "clientId": msg.get("clientId"),
                     },
                 )
+                continue
+
+            # ==================================================
+            # MUDAR NOME
+            # ==================================================
+
+            if msg_type == "setName":
+                new_name = clean_name(msg.get("name"))
+                old_name = room.name_for(websocket)
+
+                if new_name != old_name:
+                    room.names[websocket] = new_name
+                    await broadcast(room, system_message(f"{old_name} agora é {new_name}"))
+
                 continue
 
             # ==================================================
@@ -141,6 +174,7 @@ async def room_socket(websocket: WebSocket, room_code: str):
                 index = msg.get("index")
 
                 if isinstance(index, int) and 0 <= index < len(room.playlist):
+                    was_current = index == room.current_index
                     room.playlist.pop(index)
 
                     if not room.playlist:
@@ -149,12 +183,19 @@ async def room_socket(websocket: WebSocket, room_code: str):
                         room.position = 0
                         room.is_playing = False
 
-                    else:
-                        if index < room.current_index:
-                            room.current_index -= 1
+                    elif index < room.current_index:
+                        # removeu algo antes do item atual: só desloca o índice
+                        room.current_index -= 1
 
+                    elif was_current:
+                        # removeu o vídeo que estava tocando: avança para o próximo
                         if room.current_index >= len(room.playlist):
                             room.current_index = len(room.playlist) - 1
+
+                        room.video_id = room.playlist[room.current_index]
+                        room.position = 0
+                        room.is_playing = True
+                        room.last_update = time.time()
 
                 await sync_room(room)
                 continue
@@ -182,10 +223,7 @@ async def room_socket(websocket: WebSocket, room_code: str):
 
             if msg_type == "playlistNext":
                 if room.playlist:
-                    room.current_index = (
-                        room.current_index + 1
-                    ) % len(room.playlist)
-
+                    room.current_index = (room.current_index + 1) % len(room.playlist)
                     room.video_id = room.playlist[room.current_index]
                     room.position = 0
                     room.is_playing = True
@@ -200,29 +238,13 @@ async def room_socket(websocket: WebSocket, room_code: str):
 
             if msg_type == "playlistPrev":
                 if room.playlist:
-                    room.current_index = (
-                        room.current_index - 1
-                    ) % len(room.playlist)
-
+                    room.current_index = (room.current_index - 1) % len(room.playlist)
                     room.video_id = room.playlist[room.current_index]
                     room.position = 0
                     room.is_playing = True
                     room.last_update = time.time()
 
                 await sync_room(room)
-                continue
-
-            # ==================================================
-            # CHANGE VIDEO
-            # ==================================================
-
-            if msg_type == "changeVideo":
-                room.video_id = msg.get("videoId")
-                room.position = 0
-                room.is_playing = True
-                room.last_update = time.time()
-
-                await broadcast(room, room.state_message())
                 continue
 
             # ==================================================
@@ -233,30 +255,34 @@ async def room_socket(websocket: WebSocket, room_code: str):
                 position = msg.get("position")
 
                 if position is not None:
-                    room.position = float(position)
+                    try:
+                        room.position = float(position)
+                    except (TypeError, ValueError):
+                        pass
 
                 room.last_update = time.time()
 
                 if msg_type == "play":
                     room.is_playing = True
-
                 elif msg_type == "pause":
                     room.is_playing = False
 
-                await broadcast(room, room.state_message())
+                # quem disparou o evento já está com o estado correto localmente
+                await broadcast(room, room.state_message(), skip=websocket)
                 continue
 
     except WebSocketDisconnect:
+        pass
+    except Exception:
+        # nunca deixa uma falha inesperada deixar a sala em estado inconsistente
+        pass
+    finally:
         room.clients.discard(websocket)
+        leaving_name = room.names.pop(websocket, name)
 
         if room.clients:
-            await broadcast(
-                room,
-                {
-                    "type": "userCount",
-                    "count": len(room.clients),
-                },
-            )
+            await broadcast(room, {"type": "userCount", "count": len(room.clients)})
+            await broadcast(room, system_message(f"{leaving_name} saiu da sala"))
         else:
             rooms.pop(room_code, None)
 
