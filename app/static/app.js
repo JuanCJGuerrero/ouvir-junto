@@ -70,15 +70,24 @@ document.getElementById("copyLinkBtn").addEventListener("click", async () => {
 
 document.getElementById("videoForm").addEventListener("submit", (e) => {
   e.preventDefault();
+
   const input = document.getElementById("videoInput");
   const videoId = extractVideoId(input.value);
+
   if (!videoId) {
-    roomError.textContent = "Não reconheci esse link. Cole a URL completa do YouTube.";
+    roomError.textContent =
+      "Não reconheci esse link. Cole a URL completa do YouTube.";
     return;
   }
+
   roomError.textContent = "";
+
+  send({
+    type: "playlistAdd",
+    videoId
+  });
+
   input.value = "";
-  send({ type: "changeVideo", videoId });
 });
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -254,13 +263,10 @@ function renderPlaylist() {
   li.querySelector(".queue-item-remove").addEventListener("click", (e) => {
     e.stopPropagation();
 
-    playlist.splice(index, 1);
-
-    if (currentPlaylistIndex >= playlist.length) {
-      currentPlaylistIndex = playlist.length - 1;
-    }
-
-    renderPlaylist();
+  send({
+  type: "playlistRemove",
+  index
+});
     if (playlist.length === 1) {
   playPlaylistVideo(0);
 }
@@ -269,79 +275,30 @@ function renderPlaylist() {
   queueList.appendChild(li);
 });
 }
+
 async function addToPlaylist(videoId) {
-  if (!playlist.includes(videoId)) {
-    playlist.push(videoId);
-
-    // se for o primeiro vídeo da fila
-    if (currentPlaylistIndex === -1) {
-      currentPlaylistIndex = 0;
-    }
-
-    try {
-      const response = await fetch(
-        `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
-      );
-
-      const data = await response.json();
-      videoTitles[videoId] = data.title;
-    } catch {
-      videoTitles[videoId] = `Vídeo ${playlist.length}`;
-    }
-
-    renderPlaylist();
-  }
+  send({
+    type: "playlistAdd",
+    videoId
+  });
 }
-// Intercepta envio do formulário de vídeo
-document.getElementById("videoForm").addEventListener(
-  "submit",
-  (e) => {
-    const id = extractVideoId(
-      document.getElementById("videoInput").value
-    );
 
-    if (id) {
-      addToPlaylist(id);
-    }
-  },
-  true
-);
+
 
 // Botão Pular
 document.getElementById("skipBtn").addEventListener("click", () => {
-  if (playlist.length <= 1) return;
-
-  playlist.shift();
-
-  const nextVideo = playlist[0];
-
-
-  renderPlaylist();
-
-  if (nextVideo) {
-    send({
-  type: "changeVideo",
-  videoId: nextVideo,
-});
-  }
+  send({
+    type: "playlistNext"
+  });
 });
 
 // trocar video da playlist
 function playPlaylistVideo(index) {
-  if (index < 0 || index >= playlist.length) return;
-
-  currentPlaylistIndex = index;
-
-  const videoId = playlist[index];
-
   send({
-    type: "changeVideo",
-    videoId
+    type: "playlistPlay",
+    index
   });
-
-  renderPlaylist();
 }
-
 
 
 // -------------------------------
@@ -395,14 +352,45 @@ document.getElementById("chatForm").addEventListener("submit", (e) => {
 
 const originalHandleMessage = handleMessage;
 
-handleMessage = function (msg) {
+handleMessage = async function (msg) {
+
+  if (msg.type === "playlistSync") {
+
+    playlist.length = 0;
+
+    for (const videoId of msg.playlist) {
+
+      playlist.push(videoId);
+
+      if (!videoTitles[videoId]) {
+        try {
+          const response = await fetch(
+            `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+          );
+
+          const data = await response.json();
+
+          videoTitles[videoId] = data.title;
+        } catch {
+          videoTitles[videoId] = videoId;
+        }
+      }
+    }
+
+    currentPlaylistIndex = msg.currentIndex;
+
+    renderPlaylist();
+    return;
+  }
+
   if (msg.type === "chat") {
     addChatMessage(msg.name || "Usuário", msg.text || "");
     return;
   }
 
   originalHandleMessage(msg);
-};  
+};
+
 //botão próximo e anterior
 
 const panelHead = document.querySelector(".queue-panel .panel-head");
@@ -421,25 +409,22 @@ document.addEventListener("click", (e) => {
 
     if (playlist.length === 0) return;
 
-    currentPlaylistIndex++;
+    send({
+      type: "playlistNext"
+    });
 
-    if (currentPlaylistIndex >= playlist.length) {
-      currentPlaylistIndex = 0;
-    }
-
-    playPlaylistVideo(currentPlaylistIndex);
+    return;
   }
 
   if (e.target.id === "prevBtn") {
 
     if (playlist.length === 0) return;
 
-    currentPlaylistIndex--;
+    send({
+      type: "playlistPrev"
+    });
 
-    if (currentPlaylistIndex < 0) {
-      currentPlaylistIndex = playlist.length - 1;
-    }
-
-    playPlaylistVideo(currentPlaylistIndex);
+    return;
   }
+
 });
