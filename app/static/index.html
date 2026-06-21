@@ -11,6 +11,7 @@
 </head>
 <body>
 
+  <!-- ============== TELA INICIAL ============== -->
   <main id="home-screen" class="screen">
     <div class="card ticket">
       <div class="brand">
@@ -23,26 +24,28 @@
         </svg>
         <h1>Ouvir Junto</h1>
       </div>
-      <p class="subtitle">Crie uma sala, monte uma fila de vídeos do YouTube e converse enquanto ouve com seus amigos.</p>
+      <p class="subtitle" data-i18n="subtitle">Crie uma sala, monte uma fila de vídeos do YouTube e converse enquanto ouve com seus amigos.</p>
 
-      <input id="nameInput" class="name-input" placeholder="Seu nome" maxlength="24" autocomplete="off" />
+      <input id="nameInput" class="name-input" data-i18n-placeholder="placeholderName" placeholder="Seu nome" maxlength="24" autocomplete="off" />
 
-      <button id="createRoomBtn" class="btn primary">Criar sala</button>
+      <button id="createRoomBtn" class="btn primary" data-i18n="createRoom">Criar sala</button>
 
-      <div class="divider"><span>ou entre com um código</span></div>
+      <div class="divider"><span data-i18n="orJoinCode">ou entre com um código</span></div>
 
       <div class="join-row">
         <input id="joinCodeInput" class="code-input" placeholder="ABC123" maxlength="6" autocomplete="off" />
-        <button id="joinRoomBtn" class="btn">Entrar</button>
+        <button id="joinRoomBtn" class="btn" data-i18n="joinRoom">Entrar</button>
       </div>
       <p id="homeError" class="error-text"></p>
     </div>
   </main>
 
+  <!-- ============== TELA DA SALA ============== -->
   <main id="room-screen" class="screen hidden">
     <header class="room-header">
       <div class="header-left">
-        <button id="backBtn" class="icon-btn" title="Voltar ao início" type="button">←</button>
+        <button id="sidebarToggle" class="icon-btn" type="button" title="Menu" data-i18n-title="menuTooltip">☰</button>
+        <button id="backBtn" class="icon-btn" title="Voltar ao início" data-i18n-title="backTooltip" type="button">←</button>
         <div class="brand small">
           <svg class="reel-icon" viewBox="0 0 48 24" aria-hidden="true">
             <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" />
@@ -57,22 +60,22 @@
 
       <div class="room-chip">
         <span class="room-code" id="roomCodeDisplay"></span>
-        <button id="copyLinkBtn" class="chip-btn">Copiar link</button>
+        <button id="copyLinkBtn" class="chip-btn" data-i18n="copyLink">Copiar link</button>
       </div>
 
       <div class="header-right">
         <div class="user-name-edit">
           <span id="userNameDisplay" class="user-name-display"></span>
-          <button id="editNameBtn" class="icon-btn small" title="Mudar nome" type="button">✎</button>
+          <button id="editNameBtn" class="icon-btn small" title="Mudar nome" data-i18n-title="editNameTooltip" type="button">✎</button>
         </div>
         <div class="user-count" id="userCount">1 na sala</div>
       </div>
     </header>
 
     <form id="nameEditForm" class="name-edit-form hidden">
-      <input id="nameEditInput" maxlength="24" autocomplete="off" placeholder="Seu nome" />
-      <button type="submit" class="btn primary small">Salvar</button>
-      <button type="button" id="cancelNameEdit" class="btn small">Cancelar</button>
+      <input id="nameEditInput" maxlength="24" autocomplete="off" data-i18n-placeholder="placeholderName" placeholder="Seu nome" />
+      <button type="submit" class="btn primary small" data-i18n="save">Salvar</button>
+      <button type="button" id="cancelNameEdit" class="btn small" data-i18n="cancel">Cancelar</button>
     </form>
 
     <div class="room-layout">
@@ -80,26 +83,26 @@
         <div id="player-wrapper">
           <div id="player-slot"><div id="player"></div></div>
           <div id="player-placeholder" class="player-placeholder">
-            <p>Adicione um vídeo do YouTube abaixo para começar</p>
+            <p data-i18n="playerPlaceholder">Adicione um vídeo do YouTube abaixo para começar</p>
           </div>
           <div id="sync-overlay" class="sync-overlay hidden">
-            <button id="syncPlayBtn" class="btn primary" type="button">▶ Tocar e sincronizar</button>
+            <button id="syncPlayBtn" class="btn primary" type="button" data-i18n="syncPlay">▶ Tocar e sincronizar</button>
           </div>
         </div>
         <p class="now-playing" id="nowPlaying"></p>
 
         <form id="videoForm" class="controls">
-          <input id="videoInput" placeholder="Cole um link do YouTube" autocomplete="off" />
-          <button type="submit" class="btn primary">Adicionar à fila</button>
+          <input id="videoInput" data-i18n-placeholder="placeholderVideo" placeholder="Cole um link do YouTube" autocomplete="off" />
+          <button type="submit" class="btn primary" data-i18n="addQueue">Adicionar à fila</button>
         </form>
         <p id="roomError" class="error-text"></p>
 
         <section class="queue-panel">
           <div class="panel-head">
-            <h2>Fila</h2>
+            <h2 data-i18n="queue">Fila</h2>
             <div class="queue-controls">
-              <button id="prevBtn" class="chip-btn" type="button">⏮ Anterior</button>
-              <button id="nextBtn" class="chip-btn" type="button">Pular ⏭</button>
+              <button id="prevBtn" class="chip-btn" type="button" data-i18n="prev">⏮ Anterior</button>
+              <button id="nextBtn" class="chip-btn" type="button" data-i18n="next">Pular ⏭</button>
             </div>
           </div>
           <ul id="queueList" class="queue-list"></ul>
@@ -108,66 +111,140 @@
 
       <aside class="chat-col">
         <div class="panel-head">
-          <h2>Chat</h2>
+          <h2 data-i18n="chat">Chat</h2>
         </div>
         <ul id="chatLog" class="chat-log"></ul>
         <form id="chatForm" class="chat-form">
-          <input id="chatInput" placeholder="Mandar mensagem" autocomplete="off" maxlength="500" />
-          <button type="submit" class="btn primary">Enviar</button>
+          <input id="chatInput" data-i18n-placeholder="placeholderChat" placeholder="Mandar mensagem" autocomplete="off" maxlength="500" />
+          <button type="submit" class="btn primary" data-i18n="send">Enviar</button>
         </form>
       </aside>
     </div>
 
+    <!-- ============== SIDEBAR (drawer lateral) ============== -->
+    <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
 
-    <div class="sidebar">
-    <button id="sidebarToggle" class="sidebar-toggle">
-        ☰
-    </button>
+    <aside id="sidebar" class="sidebar" aria-hidden="true">
+      <div class="sidebar-top">
+        <div class="brand small">
+          <svg class="reel-icon" viewBox="0 0 48 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" />
+            <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+            <circle cx="36" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.5" />
+            <circle cx="36" cy="12" r="2.5" fill="currentColor" />
+            <line x1="21" y1="12" x2="27" y2="12" stroke="currentColor" stroke-width="2.5" />
+          </svg>
+          <span>Ouvir Junto</span>
+        </div>
+        <button id="sidebarClose" class="icon-btn small" type="button" title="Fechar menu" data-i18n-title="closeMenuTooltip">✕</button>
+      </div>
 
-    <div class="sidebar-content">
+      <nav class="sidebar-nav">
+        <div class="sidebar-group">
+          <button id="langToggleBtn" class="sidebar-item" type="button" aria-expanded="false">
+            <span class="sidebar-item-icon" aria-hidden="true">🌐</span>
+            <span class="sidebar-item-label" data-i18n="sidebarLanguage">Idioma</span>
+            <span class="flag-icon flag-icon-current" id="currentLangFlag" aria-hidden="true"></span>
+            <span class="chevron" aria-hidden="true">⌄</span>
+          </button>
 
-        <button class="sidebar-item">
-            🌐 <span>Idioma</span>
+          <div id="langPanel" class="lang-panel hidden">
+            <button class="lang-option" data-lang="pt" type="button">
+              <span class="flag-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="24" height="16" fill="#149942"/>
+                  <polygon points="12,2 22,8 12,14 2,8" fill="#f6cc14"/>
+                  <circle cx="12" cy="8" r="3.6" fill="#1c3f94"/>
+                </svg>
+              </span>
+              <span>Português</span>
+            </button>
+
+            <button class="lang-option" data-lang="en" type="button">
+              <span class="flag-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="24" height="16" fill="#fff"/>
+                  <g fill="#bf0a30">
+                    <rect y="0" width="24" height="1.23"/>
+                    <rect y="2.46" width="24" height="1.23"/>
+                    <rect y="4.92" width="24" height="1.23"/>
+                    <rect y="7.38" width="24" height="1.23"/>
+                    <rect y="9.84" width="24" height="1.23"/>
+                    <rect y="12.3" width="24" height="1.23"/>
+                    <rect y="14.76" width="24" height="1.23"/>
+                  </g>
+                  <rect width="10.5" height="8.6" fill="#002868"/>
+                </svg>
+              </span>
+              <span>English</span>
+            </button>
+
+            <button class="lang-option" data-lang="nl" type="button">
+              <span class="flag-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="24" height="16" fill="#21468B"/>
+                  <rect width="24" height="10.67" fill="#fff"/>
+                  <rect width="24" height="5.33" fill="#AE1C28"/>
+                </svg>
+              </span>
+              <span>Nederlands</span>
+            </button>
+
+            <button class="lang-option" data-lang="es" type="button">
+              <span class="flag-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 16" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="24" height="16" fill="#AA151B"/>
+                  <rect y="4" width="24" height="8" fill="#F1BF00"/>
+                </svg>
+              </span>
+              <span>Español</span>
+            </button>
+          </div>
+        </div>
+
+        <button id="themeToggleBtn" class="sidebar-item" type="button">
+          <span class="sidebar-item-icon" aria-hidden="true">🎨</span>
+          <span class="sidebar-item-label" data-i18n="sidebarTheme">Tema</span>
+          <span class="sidebar-item-hint" id="themeHint" data-i18n="themeDark">Escuro</span>
+          <span class="toggle-pill" id="themePill" aria-hidden="true"><span class="toggle-knob"></span></span>
         </button>
 
-        <button class="sidebar-item">
-            ⚙️ <span>Configurações</span>
+        <button id="notifToggleBtn" class="sidebar-item" type="button">
+          <span class="sidebar-item-icon" aria-hidden="true">💬</span>
+          <span class="sidebar-item-label" data-i18n="sidebarNotifications">Avisos da sala</span>
+          <span class="toggle-pill active" id="notifPill" aria-hidden="true"><span class="toggle-knob"></span></span>
         </button>
 
-        <button class="sidebar-item">
-            🎨 <span>Tema</span>
+        <button id="helpBtn" class="sidebar-item" type="button">
+          <span class="sidebar-item-icon" aria-hidden="true">❓</span>
+          <span class="sidebar-item-label" data-i18n="sidebarHelp">Ajuda</span>
         </button>
+      </nav>
 
-        <button class="sidebar-item">
-            ❓ <span>Ajuda</span>
-        </button>
+      <div class="sidebar-spacer"></div>
 
-        <div class="sidebar-divider"></div>
+      <button id="leaveRoomBtn" class="sidebar-item danger" type="button">
+        <span class="sidebar-item-icon" aria-hidden="true">🚪</span>
+        <span class="sidebar-item-label" data-i18n="sidebarLeave">Sair da sala</span>
+      </button>
+    </aside>
 
-        <button class="sidebar-item lang-btn" data-lang="pt">
-            🇧🇷 <span>Português</span>
-        </button>
-
-        <button class="sidebar-item lang-btn" data-lang="en">
-            🇺🇸 <span>English</span>
-        </button>
-
-        <button class="sidebar-item lang-btn" data-lang="nl">
-            🇳🇱 <span>Nederlands</span>
-        </button>
-
-        <button class="sidebar-item lang-btn" data-lang="es">
-            🇪🇸 <span>Español</span>
-        </button>
-
-        <div class="sidebar-spacer"></div>
-
-        <button id="leaveRoomBtn" class="sidebar-item danger">
-            🚪 <span>Sair da sala</span>
-        </button>
-
+    <!-- ============== MODAL DE AJUDA ============== -->
+    <div id="helpModal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3 data-i18n="helpTitle">Como funciona</h3>
+          <button id="closeHelpModal" class="icon-btn small" type="button">✕</button>
+        </div>
+        <ol class="help-list">
+          <li data-i18n="helpStep1">Cole um link do YouTube na caixa abaixo do player para adicionar à fila.</li>
+          <li data-i18n="helpStep2">Play, pause, troca de vídeo e a fila ficam sincronizados para todo mundo na sala.</li>
+          <li data-i18n="helpStep3">Toque em "Copiar link" para convidar outras pessoas para a sala.</li>
+          <li data-i18n="helpStep4">Use o chat ao lado para conversar enquanto assiste junto.</li>
+        </ol>
+        <button id="helpModalOk" class="btn primary small" type="button" data-i18n="helpClose">Entendi</button>
+      </div>
     </div>
-</div>
 
   </main>
 
