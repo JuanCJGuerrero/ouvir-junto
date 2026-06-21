@@ -734,3 +734,155 @@ input:focus {
 
     border: 1px solid rgba(255,79,163,.25);
 }
+
+/* ---------- LANGUAGE SELECTOR ---------- */
+
+.language-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 6px;
+
+    background: rgba(255,255,255,.04);
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    border-radius: 999px;
+
+    backdrop-filter: blur(10px);
+}
+
+.lang-btn {
+    width: 42px;
+    height: 42px;
+
+    border: none;
+
+    background: transparent;
+
+    border-radius: 12px;
+
+    cursor: pointer;
+
+    font-size: 22px;
+
+    transition: all .25s ease;
+}
+
+.lang-btn:hover {
+    background: rgba(255,79,163,.15);
+
+    transform: translateY(-2px);
+}
+
+.lang-btn.active {
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255,79,163,.25),
+            rgba(216,108,255,.20)
+        );
+
+    box-shadow:
+        0 0 20px rgba(255,79,163,.25);
+}
+
+.sidebar {
+    position: fixed;
+
+    top: 24px;
+    left: 24px;
+
+    width: 72px;
+    height: calc(100vh - 48px);
+
+    background: rgba(28,20,39,.92);
+
+    backdrop-filter: blur(18px);
+
+    border: 1px solid rgba(255,255,255,.08);
+
+    border-radius: 28px;
+
+    overflow: hidden;
+
+    transition: .35s ease;
+
+    z-index: 999;
+}
+
+.sidebar.open {
+    width: 260px;
+}
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 12px;
+}
+
+.sidebar-toggle {
+    width: 48px;
+    height: 48px;
+
+    border: none;
+    background: transparent;
+
+    color: white;
+
+    font-size: 22px;
+
+    cursor: pointer;
+}
+
+.sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    height: 48px;
+
+    border: none;
+
+    background: transparent;
+
+    color: white;
+
+    border-radius: 14px;
+
+    cursor: pointer;
+
+    padding: 0 14px;
+
+    transition: .2s;
+}
+
+.sidebar-item:hover {
+    background: rgba(255,79,163,.15);
+}
+
+.sidebar-item span {
+    opacity: 0;
+    white-space: nowrap;
+    transition: .2s;
+}
+
+.sidebar.open .sidebar-item span {
+    opacity: 1;
+}
+
+.sidebar-divider {
+    height: 1px;
+    margin: 10px 0;
+    background: rgba(255,255,255,.08);
+}
+
+.sidebar-spacer {
+    flex: 1;
+}
+
+.sidebar-item.danger:hover {
+    background: rgba(255,80,80,.15);
+}

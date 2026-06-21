@@ -561,3 +561,115 @@ document.getElementById("chatForm").addEventListener("submit", (e) => {
   send({ type: "chat", text, clientId });
   input.value = "";
 });
+
+const translations = {
+    pt: {
+        createRoom: "Criar sala",
+        joinRoom: "Entrar",
+        addQueue: "Adicionar à fila",
+        send: "Enviar",
+        chat: "Chat",
+        queue: "Fila",
+        copyLink: "Copiar link",
+        placeholderName: "Seu nome",
+        placeholderVideo: "Cole um link do YouTube",
+        placeholderChat: "Mandar mensagem"
+    },
+
+    en: {
+        createRoom: "Create Room",
+        joinRoom: "Join",
+        addQueue: "Add to Queue",
+        send: "Send",
+        chat: "Chat",
+        queue: "Queue",
+        copyLink: "Copy Link",
+        placeholderName: "Your name",
+        placeholderVideo: "Paste a YouTube link",
+        placeholderChat: "Send message"
+    },
+
+    nl: {
+        createRoom: "Kamer maken",
+        joinRoom: "Deelnemen",
+        addQueue: "Toevoegen",
+        send: "Verzenden",
+        chat: "Chat",
+        queue: "Wachtrij",
+        copyLink: "Link kopiëren",
+        placeholderName: "Jouw naam",
+        placeholderVideo: "Plak een YouTube-link",
+        placeholderChat: "Bericht sturen"
+    },
+
+    es: {
+        createRoom: "Crear sala",
+        joinRoom: "Entrar",
+        addQueue: "Agregar a la cola",
+        send: "Enviar",
+        chat: "Chat",
+        queue: "Cola",
+        copyLink: "Copiar enlace",
+        placeholderName: "Tu nombre",
+        placeholderVideo: "Pega un enlace de YouTube",
+        placeholderChat: "Enviar mensaje"
+    }
+};
+
+
+function setLanguage(lang) {
+
+    localStorage.setItem("language", lang);
+
+    const t = translations[lang];
+
+    document.getElementById("createRoomBtn").textContent = t.createRoom;
+    document.getElementById("joinRoomBtn").textContent = t.joinRoom;
+
+    document.querySelector("#videoForm button").textContent = t.addQueue;
+
+    document.querySelector("#chatForm button").textContent = t.send;
+
+    document.querySelector(".queue-panel h2").textContent = t.queue;
+    document.querySelector(".chat-col h2").textContent = t.chat;
+
+    document.getElementById("copyLinkBtn").textContent = t.copyLink;
+
+    document.getElementById("nameInput").placeholder = t.placeholderName;
+    document.getElementById("nameEditInput").placeholder = t.placeholderName;
+
+    document.getElementById("videoInput").placeholder = t.placeholderVideo;
+    document.getElementById("chatInput").placeholder = t.placeholderChat;
+
+    document.querySelectorAll(".lang-btn").forEach(btn => {
+        btn.classList.remove("active");
+    });
+
+    document
+        .querySelector(`[data-lang="${lang}"]`)
+        .classList.add("active");
+}
+
+
+document.querySelectorAll(".lang-btn").forEach(btn => {
+
+    btn.addEventListener("click", () => {
+
+        setLanguage(btn.dataset.lang);
+
+    });
+
+});
+
+
+const savedLanguage =
+    localStorage.getItem("language") || "pt";
+
+setLanguage(savedLanguage);
+
+const sidebar = document.querySelector(".sidebar");
+const toggle = document.getElementById("sidebarToggle");
+
+toggle.addEventListener("click", () => {
+    sidebar.classList.toggle("open");
+});
