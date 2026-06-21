@@ -54,9 +54,6 @@ class Room:
             "position": self.current_position(),
             "playlist": self.playlist,
             "currentIndex": self.current_index,
-            # timestamp do servidor (epoch, segundos) para o cliente compensar
-            # a latência de rede entre o cálculo da posição e a aplicação local
-            "serverTime": time.time(),
         }
 
     def playlist_message(self) -> dict:

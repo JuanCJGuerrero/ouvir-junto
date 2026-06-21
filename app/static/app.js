@@ -586,15 +586,14 @@ function applySync(msg) {
 
   placeholder.classList.add("hidden");
 
-  // compensa a latência de rede entre o instante em que o servidor calculou
-  // a posição (serverTime) e o instante em que este cliente a aplica; sem
-  // isso, todo cliente fica sistematicamente "atrasado" em relação ao que o
-  // servidor já considerava correto no momento do envio
-  let targetPosition = msg.position;
-  if (msg.isPlaying && typeof msg.serverTime === "number") {
-    const latency = Math.max(0, Date.now() / 1000 - msg.serverTime);
-    targetPosition = msg.position + latency;
-  }
+  // OBS: já existiu aqui uma tentativa de compensar a latência de rede usando
+  // o "serverTime" do servidor comparado com Date.now() do navegador. Isso foi
+  // removido: o relógio do cliente e o do servidor não são sincronizados (sem
+  // NTP garantido entre as duas máquinas), então qualquer diferença de horário
+  // entre eles era somada à posição do vídeo, causando saltos de dezenas de
+  // segundos em todos os players. Usamos a posição enviada pelo servidor
+  // diretamente, que já é a posição correta calculada no momento do envio.
+  const targetPosition = msg.position;
 
   const loadedId = player && player.getVideoData ? player.getVideoData().video_id : null;
 
