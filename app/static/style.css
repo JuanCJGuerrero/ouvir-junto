@@ -386,12 +386,54 @@ input:focus {
   backdrop-filter: blur(5px);
 }
 
+.sync-overlay {
+  position: absolute;
+  inset: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: rgba(0, 0, 0, .55);
+  backdrop-filter: blur(4px);
+
+  border-radius: 28px;
+
+  z-index: 10;
+}
+
 .now-playing {
   color: var(--text-muted);
 }
 
 .now-playing strong {
   color: var(--text);
+}
+
+.brand.small {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand.small .reel-icon {
+  width: 28px;
+}
+
+.brand.small span {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+#createRoomBtn {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.queue-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ---------------- LAYOUT ---------------- */

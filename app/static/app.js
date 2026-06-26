@@ -595,7 +595,15 @@ function applySync(msg) {
   // diretamente, que já é a posição correta calculada no momento do envio.
   const targetPosition = msg.position;
 
-  const loadedId = player && player.getVideoData ? player.getVideoData().video_id : null;
+  // se o player ainda não existir (race condition entre WS e YT API), guarda
+  // como estado pendente e aguarda o onReady
+  if (!player) {
+    pendingState = msg;
+    applyingRemoteUpdate = false;
+    return;
+  }
+
+  const loadedId = player.getVideoData ? player.getVideoData().video_id : null;
 
   if (loadedId !== msg.videoId) {
     endedHandledForCurrentVideo = false;
@@ -676,6 +684,8 @@ function onPlayerStateChange(event) {
   // todo cliente observa o próprio drift enquanto está tocando, não só quem
   // deu o play originalmente — assim a sincronia não depende de uma única
   // aba continuar enviando heartbeat (ex.: se ela for para segundo plano)
+  if (!player) return; // player pode ter sido destruído durante leaveRoom
+
   if (event.data === YT.PlayerState.PLAYING) {
     syncOverlay.classList.add("hidden");
     startHeartbeat();

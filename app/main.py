@@ -208,7 +208,8 @@ async def room_socket(websocket: WebSocket, room_code: str):
                         room.is_playing = True
                         room.last_update = time.time()
 
-                await sync_room(room)
+                    await sync_room(room)
+
                 continue
 
             # ==================================================
