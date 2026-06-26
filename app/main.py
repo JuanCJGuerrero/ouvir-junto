@@ -3,7 +3,8 @@ import json
 import time
 from typing import Dict, Optional, Set
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Ouvir Junto")
@@ -350,6 +351,22 @@ async def health():
         "status": "ok",
         "rooms": len(rooms),
     }
+
+
+# Middleware que impede o browser de cachear HTML, JS e CSS.
+# Sem isso, após atualizar os arquivos estáticos o browser continua servindo
+# a versão antiga até o cache expirar (pode demorar horas), e o usuário
+# precisa dar Ctrl+Shift+R manualmente para forçar o reload.
+# Com "no-cache" o browser SEMPRE verifica no servidor se o arquivo mudou
+# (via ETag/Last-Modified); só baixa novamente se realmente mudou.
+@app.middleware("http")
+async def no_cache_static(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path == "/" or path.endswith((".html", ".js", ".css")):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+    return response
 
 
 app.mount(
